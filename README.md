@@ -69,7 +69,7 @@ Let's suppose that, on your site, you have pages of type "Advert" that you place
     parentDocType="*" 
     childDocType="*" 
     maxNodes="10"
-    showWarnings="true"
+    showWarnings="false"
     customMessage=""
     customMessageCategory=""
     customWarningMessage=""
