@@ -57,6 +57,11 @@ namespace DotSee.NodeRestrict
         /// Holds the property alias for the "special" property that can be added to nodes to indicate max number of children
         /// </summary>
         public string PropertyAlias { get; private set; }
+
+        /// <summary>
+        /// True if showWarnings attribute is true in config file for warnings when applying limits based on a document property
+        /// </summary>
+        public bool ShowWarningsForProperty { get; private set; }
         
         #endregion
 
@@ -100,7 +105,7 @@ namespace DotSee.NodeRestrict
                     )
                 {
                     //Create a rule on the fly and apply it for all children of the parent node.
-                    Rule customRule = new Rule(parent.ContentType.Alias, "*", (int)parent.Properties[PropertyAlias].Value ,true, true);
+                    Rule customRule = new Rule(parent.ContentType.Alias, "*", (int)parent.Properties[PropertyAlias].Value, true, ShowWarningsForProperty);
                     return CheckRule(customRule, node);
                 }
             }
@@ -174,6 +179,12 @@ namespace DotSee.NodeRestrict
 
             //Get the "special" property alias that is going to be optionally used in documents to define max number of children
             PropertyAlias = xmlConfig.SelectNodes("/nodeRestrict")[0].Attributes["propertyAlias"].Value;
+            
+            try
+            {
+                ShowWarningsForProperty = bool.Parse(xmlConfig.SelectNodes("/nodeRestrict")[0].Attributes["showWarnings"].Value);
+            }
+            catch { ShowWarningsForProperty = false; }
 
             foreach (XmlNode xmlConfigEntry in xmlConfig.SelectNodes("/nodeRestrict/rule"))
             {
