@@ -27,8 +27,7 @@ namespace DotSee.NodeRestrict
         /// The list of rule objects
         /// </summary>
         private List<Rule> _rules;
-
-        public string PropertyAlias { get; private set; }
+      
         #endregion
 
         #region Constructors
@@ -52,6 +51,15 @@ namespace DotSee.NodeRestrict
 
         #endregion
 
+        #region Public Properties
+        
+        /// <summary>
+        /// Holds the property alias for the "special" property that can be added to nodes to indicate max number of children
+        /// </summary>
+        public string PropertyAlias { get; private set; }
+        
+        #endregion
+
         #region Public Methods
 
         /// <summary>
@@ -64,18 +72,24 @@ namespace DotSee.NodeRestrict
         }
 
         /// <summary>
-        /// Applies all rules on creation of a node. 
+        /// Applies all rules on publishing a node. 
         /// </summary>
         /// <param name="node">The newly created node we need to apply rules for</param>
         public Result Run(IContent node)
         {
-
+            //Get the parent node.
             var parent = node.Parent();
+
+            //If we are publishing a top-level node, skip the whole process.
             if (parent == null) { return null; }
+            
+            //If the node is already published (and is just being republished) skip the whole process.
             if (node.Published) { return null; }
 
             Result result = null;
 
+            //Check if the document's parent has the (optional) "special" property that defines the 
+            //maximum number of children. If it does, then this overrides any other rules in effect.
             //Swallow any exceptions here. If it's there, it's there. If it's not, don't bother.
             try
             {
@@ -85,21 +99,24 @@ namespace DotSee.NodeRestrict
                     && (int)parent.Properties[PropertyAlias].Value > 0
                     )
                 {
+                    //Create a rule on the fly and apply it for all children of the parent node.
                     Rule customRule = new Rule(parent.ContentType.Alias, "*", (int)parent.Properties[PropertyAlias].Value ,true, true);
                     return CheckRule(customRule, node);
                 }
             }
             catch { }
 
+            //If this part is reached, then we haven't found a "special" property at the parent node
+            //and we are going to check the rules loaded from the config file.
             foreach (Rule rule in _rules)
             {
+                //Check if rule applies
                 result = CheckRule(rule, node);
 
-                if (result!=null)
-                {
-                    break;
-                }
+                //Stop at the first rule that applies. 
+                if (result != null) { break; }
             }
+
             return (result);
         }
 
@@ -107,31 +124,38 @@ namespace DotSee.NodeRestrict
 
         #region Private Methods
 
+        /// <summary>
+        /// Checks if a given rule applies to a given node
+        /// </summary>
+        /// <param name="rule">The rule</param>
+        /// <param name="node">The node to check against the rule</param>
+        /// <returns>Null if the rule does not apply to the node, or a Result object if it does.</returns>
         private Result CheckRule(Rule rule, IContent node) {
+
             int nodeCount = 0;
 
             //If maxnodes not at least equal 1 then skip this rule.
             if (rule.MaxNodes <= 0) { return null; }
 
+            //See if doctypes for parent and child node match our current scenario
             bool isMatchParent = node.Parent().ContentType.Alias.Equals(rule.ParentDocType) || rule.ParentDocType.Equals("*");
             bool isMatchChild = rule.ChildDocType.Equals(node.ContentType.Alias) || rule.ChildDocType.Equals("*");
 
             //If rule doctypes do not match, skip this rule
             if (!isMatchChild || !isMatchParent) { return null; }
 
-            //If parent node already has published child nodes of the same type as the one we are saving
+            //Check if parent node already contains published child nodes of the same type as the one we are saving
             if (node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name).Any())
             {
+                //Get a count of the nodes
                 nodeCount = node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name && x.Published).Count();
             }
 
             return Result.GetResult(nodeCount, rule);
-
-
         }
 
         /// <summary>
-        /// Gets rules from /config/Restrictor.config file (if it exists)
+        /// Gets rules from /config/nodeRestrict.config file (if it exists)
         /// </summary>
         private void GetRulesFromConfigFile()
         {
@@ -148,6 +172,7 @@ namespace DotSee.NodeRestrict
                 return;
             }
 
+            //Get the "special" property alias that is going to be optionally used in documents to define max number of children
             PropertyAlias = xmlConfig.SelectNodes("/nodeRestrict")[0].Attributes["propertyAlias"].Value;
 
             foreach (XmlNode xmlConfigEntry in xmlConfig.SelectNodes("/nodeRestrict/rule"))
@@ -170,16 +195,13 @@ namespace DotSee.NodeRestrict
                     string customWarningMessage = xmlConfigEntry.Attributes["customWarningMessage"].Value;
                     string customWarningMessageCategory = xmlConfigEntry.Attributes["customWarningMessageCategory"].Value;
 
-
-                    var rule = new Rule(parentDocType, childDocType, maxNodes, false, showWarnings, customMessage, customMessageCategory, customWarningMessage, customWarningMessageCategory);
+                    //Create the rule and add it to the list
+                    Rule rule = new Rule(parentDocType, childDocType, maxNodes, false, showWarnings, customMessage, customMessageCategory, customWarningMessage, customWarningMessageCategory);
                     _rules.Add(rule);
 
                 }
             }
         }
-
-
-       
 
         #endregion
     }
