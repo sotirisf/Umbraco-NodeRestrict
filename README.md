@@ -93,4 +93,7 @@ The "showWarnings" attribute works the same way as in rules. When applying a res
 
 ## Limitations 
 The "special property" limit (when the special property exists and has a value) overrides any defined rules that can apply to the same node.
-Rules are processed top-down, so make sure the more general rules go to the bottom. If a rule is processed, no more rules are evaluated.
+
+Rules are processed top-down, so make sure the more general rules go to the bottom. 
+
+If a rule is processed, no more rules are evaluated.
