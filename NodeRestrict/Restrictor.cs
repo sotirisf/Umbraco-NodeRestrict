@@ -28,6 +28,7 @@ namespace DotSee.NodeRestrict
         /// </summary>
         private List<Rule> _rules;
 
+        public string PropertyAlias { get; private set; }
         #endregion
 
         #region Constructors
@@ -68,38 +69,34 @@ namespace DotSee.NodeRestrict
         /// <param name="node">The newly created node we need to apply rules for</param>
         public Result Run(IContent node)
         {
-            string createdDocType = node.ContentType.Alias;
 
-            bool hasChildren = node.Children().Any();
+            var parent = node.Parent();
+            if (parent == null) { return null; }
+            if (node.Published) { return null; }
 
-            //bool limitReached = false;
             Result result = null;
-            int nodeCount = 0;
+
+            //Swallow any exceptions here. If it's there, it's there. If it's not, don't bother.
+            try
+            {
+                if (
+                    parent.HasProperty(PropertyAlias) 
+                    && parent.Properties[PropertyAlias]!=null 
+                    && (int)parent.Properties[PropertyAlias].Value > 0
+                    )
+                {
+                    Rule customRule = new Rule(parent.ContentType.Alias, "*", (int)parent.Properties[PropertyAlias].Value ,true, true);
+                    return CheckRule(customRule, node);
+                }
+            }
+            catch { }
 
             foreach (Rule rule in _rules)
             {
-                if (!rule.ChildDocType.Equals(createdDocType) || node.Published==true) { continue; }
+                result = CheckRule(rule, node);
 
-                if (
-                    rule.IncludeChildren==false 
-                    && node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name).Any()
-                   )
+                if (result!=null)
                 {
-                    nodeCount = node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name && x.Published).Count();
-                }
-                else if (
-                        rule.IncludeChildren == true
-                        && node.Parent().Descendants().Where(x => x.ContentType.Name == node.ContentType.Name).Any()
-                        )
-                {
-                    nodeCount = node.Parent().Descendants().Where(x => x.ContentType.Name == node.ContentType.Name && x.Published).Count();
-                }
-
-                result = Result.GetResult(nodeCount, rule);
-
-                if (nodeCount >= rule.MaxNodes)
-                {
-                    
                     break;
                 }
             }
@@ -109,6 +106,29 @@ namespace DotSee.NodeRestrict
         #endregion
 
         #region Private Methods
+
+        private Result CheckRule(Rule rule, IContent node) {
+            int nodeCount = 0;
+
+            //If maxnodes not at least equal 1 then skip this rule.
+            if (rule.MaxNodes <= 0) { return null; }
+
+            bool isMatchParent = node.Parent().ContentType.Alias.Equals(rule.ParentDocType) || rule.ParentDocType.Equals("*");
+            bool isMatchChild = rule.ChildDocType.Equals(node.ContentType.Alias) || rule.ChildDocType.Equals("*");
+
+            //If rule doctypes do not match, skip this rule
+            if (!isMatchChild || !isMatchParent) { return null; }
+
+            //If parent node already has published child nodes of the same type as the one we are saving
+            if (node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name).Any())
+            {
+                nodeCount = node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name && x.Published).Count();
+            }
+
+            return Result.GetResult(nodeCount, rule);
+
+
+        }
 
         /// <summary>
         /// Gets rules from /config/Restrictor.config file (if it exists)
@@ -128,6 +148,8 @@ namespace DotSee.NodeRestrict
                 return;
             }
 
+            PropertyAlias = xmlConfig.SelectNodes("/nodeRestrict")[0].Attributes["propertyAlias"].Value;
+
             foreach (XmlNode xmlConfigEntry in xmlConfig.SelectNodes("/nodeRestrict/rule"))
             {
                 if (xmlConfigEntry.NodeType == XmlNodeType.Element)
@@ -136,14 +158,20 @@ namespace DotSee.NodeRestrict
                     string childDocType = xmlConfigEntry.Attributes["childDocType"].Value;
                     int maxNodes=-1;
                     int.TryParse(xmlConfigEntry.Attributes["maxNodes"].Value, out maxNodes);
-                    bool includeChildren = false;
-                    includeChildren= bool.TryParse(xmlConfigEntry.Attributes["includeChildren"].Value, out includeChildren);
+
                     bool showWarnings = false;
-                    showWarnings = bool.TryParse(xmlConfigEntry.Attributes["showWarnings"].Value, out showWarnings);
+                    try
+                    {
+                        showWarnings = bool.Parse(xmlConfigEntry.Attributes["showWarnings"].Value);
+                    } catch { }
+
                     string customMessage = xmlConfigEntry.Attributes["customMessage"].Value;
                     string customMessageCategory = xmlConfigEntry.Attributes["customMessageCategory"].Value;
+                    string customWarningMessage = xmlConfigEntry.Attributes["customWarningMessage"].Value;
+                    string customWarningMessageCategory = xmlConfigEntry.Attributes["customWarningMessageCategory"].Value;
 
-                    var rule = new Rule(parentDocType, childDocType, maxNodes, includeChildren, showWarnings, customMessage, customMessageCategory);
+
+                    var rule = new Rule(parentDocType, childDocType, maxNodes, false, showWarnings, customMessage, customMessageCategory, customWarningMessage, customWarningMessageCategory);
                     _rules.Add(rule);
 
                 }

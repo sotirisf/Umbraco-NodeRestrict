@@ -30,35 +30,14 @@ namespace DotSee.NodeRestrict
 
             if (result.LimitReached)
             {
-                string category = "";
-                string message = "";
-                if (!string.IsNullOrEmpty(result.Rule.CustomMessage))
-                {
-                    category = result.Rule.CustomMessageCategory;
-                    message = result.Rule.CustomMessage;
-                }
-                else
-                {
-                    category = "Limit reached - node not published";
-                    message = (result.Rule.IncludeChildren) ?
-                        string.Format("Max allowed \"{2}\" nodes under \"{1}\" and its child nodes: {0}.", result.Rule.MaxNodes.ToString(), result.Rule.ParentDocType, result.Rule.ChildDocType)
-                        :
-                        string.Format("Max allowed \"{1}\" nodes directly under \"{2}\": {0}.", result.Rule.MaxNodes.ToString(), result.Rule.ChildDocType, result.Rule.ParentDocType)
-                        ;
-                }
-                args.CancelOperation(new EventMessage(category, message, EventMessageType.Error));
+               
+                args.CancelOperation(new EventMessage(result.Rule.GetMessageCategory(), result.Rule.GetMessage(), EventMessageType.Error));
 
             }
             else if (result.Rule.ShowWarnings) {
-                
-                string category = "Caution";
-                
-                string message = (result.Rule.IncludeChildren) ?
-                    string.Format("Restrictions in place. \"{3}\" nodes under \"{1}\" and its child nodes: {2} of {0} allowed.", result.Rule.MaxNodes.ToString(), result.Rule.ParentDocType, (result.NodeCount+1).ToString(), result.Rule.ChildDocType)
-                    :
-                    string.Format("Restrictions in place. \"{3}\" nodes directly under \"{1}\": {2} of {0} allowed.", result.Rule.MaxNodes.ToString(), result.Rule.ParentDocType, (result.NodeCount+1).ToString(), result.Rule.ChildDocType)
-                    ;
-                args.Messages.Add(new EventMessage(category, message, EventMessageType.Warning));
+               
+
+                args.Messages.Add(new EventMessage(result.Rule.GetWarningMessageCategory(), result.Rule.GetWarningMessage(result.NodeCount), EventMessageType.Warning));
             }
         }
 
