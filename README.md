@@ -1,7 +1,7 @@
 # Umbraco-NodeRestrict
-Sets restrictions to number of children allowed to be published under a node either by rules (parent doctype - child doctype) or by a special property in the parent node (for children of any doctype).
+Restricts the number of children allowed to be published under a node either by rules (parent doctype - child doctype) or by a special property in a single node (limiting the number of children of any doctype).
 
-If the number of allowed documents is reached, new nodes will be saved but not published and a message (standard or custom) will inform the user of the restriction. The back-end can also optionally display warning messages before the max number of children is reached to inform the user of the restriction and the allowed number remaining.
+If the max number of allowed nodes is reached, new nodes will be saved but not published and a message (standard or custom) will inform the user of the restriction. The back-end can also optionally display warning messages before the max number of children is reached to inform the user of the restriction and the allowed number remaining.
 
 ## Usage (using configuration file in /config folder)
 If you install the package, you will find NodeRestrict.config in your /config folder with a commented example of a rule.
