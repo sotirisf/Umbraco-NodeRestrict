@@ -1,5 +1,7 @@
 # Umbraco-NodeRestrict
-Sets restrictions to number of children allowed to be published under a node either by rules (parent doctype - child doctype) or by a special property in the parent node (for children of any doctype)
+Sets restrictions to number of children allowed to be published under a node either by rules (parent doctype - child doctype) or by a special property in the parent node (for children of any doctype).
+
+If the number of allowed documents is reached, new nodes will be saved but not published and a message (standard or custom) will inform the user of the restriction. The back-end can also optionally display warning messages before the max number of children is reached to inform the user of the restriction and the allowed number remaining.
 
 ## Usage (using configuration file in /config folder)
 If you install the package, you will find NodeRestrict.config in your /config folder with a commented example of a rule.
@@ -26,8 +28,8 @@ You can define rules for parent/child sets based on document type as well as use
 
 A rule has the following attributes:
 
-* **parentDocType**: The document type alias of the parent of the document being published. 
-* **childDocType**: The document type alias of the document being published.
+* **parentDocType**: The document type alias of the parent of the document being published. **You can alternatively use the "*" character here to match all document types.**
+* **childDocType**: The document type alias of the document being published. **You can alternatively use the "*" character here to match all document types.**
 * **maxNodes**: The maximum number of "childDocType" nodes allowed under a "ParentDocType" node.
 * **showWarnings**: When set, displays warning messages regarding the number of nodes allowed if a rule is matched but the maximum number of children has not yet been reached.
 * **customMessage**: Overrides the standard message when the maximum number of nodes has been reached.
@@ -60,10 +62,35 @@ Let's suppose that, on your site, you have pages of type "Advert" that you place
    </rule>
  ```
  
+ Another far-fetched example would be to limit EVERY node in your site to having a maximum of 10 children, with no warning messages and a standard message when the limit is reached. To do that, you need a rule like the following:
+ 
+```xml
+  <rule 
+    parentDocType="*" 
+    childDocType="*" 
+    maxNodes="10"
+    showWarnings="true"
+    customMessage=""
+    customMessageCategory=""
+    customWarningMessage=""
+    customWarningMessageCategory=""
+    >
+   </rule>
+ ```
+ 
+ The "*" means "everything", as you may have guessed.
+ 
  Now let's suppose you have a single node where you need to limit its number of child nodes to 5. In order to do that, you must specify the "special" property alias you need to use in the config file:
 
 ```xml
 <nodeRestrict propertyAlias="mySpecialPropertyAlias" showWarnings="true">
 ```
-And have a numeric property with alias "mySpecialPropertyAlias" in your document. Then you can go and set the number 5 on it. This will behave exactly like a rule, but only for the specific node. If the node doesn't have a value for the "special" property, then this will be ignored. The "showWarnings" attribute works the same way as in rules. When applying a restriction based on the document's "special" property, it defines if warnings will be displayed. If set to false, no warnings will be displayed (only a message when the maximum number of children has been reached).
+And have a numeric property with alias "mySpecialPropertyAlias" in your document. Then you can go and set the number 5 on it. This will behave exactly like a rule, but only for the specific node. 
 
+If the node doesn't have a value for the "special" property, then this will be ignored. 
+
+The "showWarnings" attribute works the same way as in rules. When applying a restriction based on the document's "special" property, it defines if warnings will be displayed. If set to false, no warnings will be displayed (only a message when the maximum number of children has been reached).
+
+## Limitations 
+The "special property" limit (when the special property exists and has a value) overrides any defined rules that can apply to the same node.
+Rules are processed top-down, so make sure the more general rules go to the bottom. If a rule is processed, no more rules are evaluated.
