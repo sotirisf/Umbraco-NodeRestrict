@@ -80,7 +80,9 @@ Let's suppose that, on your site, you have pages of type "Advert" that you place
  
  The "*" means "everything", as you may have guessed.
  
- Now let's suppose you have a single node where you need to limit its number of child nodes to 5. In order to do that, you must specify the "special" property alias you need to use in the config file:
+ ## Usage (using document property)
+ 
+ Now let's suppose you have a single, specific node where you need to limit its number of child nodes to 5. In order to do that, you must specify the "special" property alias you need to use in the config file:
 
 ```xml
 <nodeRestrict propertyAlias="mySpecialPropertyAlias" showWarnings="true">
@@ -90,6 +92,8 @@ And have a numeric property with alias "mySpecialPropertyAlias" in your document
 If the node doesn't have a value for the "special" property, then this will be ignored. 
 
 The "showWarnings" attribute works the same way as in rules. When applying a restriction based on the document's "special" property, it defines if warnings will be displayed. If set to false, no warnings will be displayed (only a message when the maximum number of children has been reached).
+
+So if your propertyAlias is, for example, "umbracoRestrictNodes" (this is the default, by the way) and you go on and add this property to a document and give it a value of 5, then that specific document will only allow for 5 published child nodes (of any type).
 
 ## Limitations 
 The "special property" limit (when the special property exists and has a value) overrides any defined rules that can apply to the same node.
