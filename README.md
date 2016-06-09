@@ -78,7 +78,7 @@ Let's suppose that, on your site, you have pages of type "Advert" that you place
    </rule>
  ```
  
- The "*" means "everything", as you may have guessed.
+ The asterisk means "everything", as you may have guessed.
  
  ## Usage (using document property)
  
