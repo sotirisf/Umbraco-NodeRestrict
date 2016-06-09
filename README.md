@@ -80,7 +80,7 @@ Let's suppose that, on your site, you have pages of type "Advert" that you place
  
  The asterisk means "everything", as you may have guessed.
  
- ## Usage (using document property)
+## Usage (using document property)
  
  Now let's suppose you have a single, specific node where you need to limit its number of child nodes to 5. In order to do that, you must specify the "special" property alias you need to use in the config file:
 
