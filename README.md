@@ -91,7 +91,7 @@ And have a numeric property with alias "mySpecialPropertyAlias" in your document
 
 If the node doesn't have a value for the "special" property, then this will be ignored. 
 
-The "showWarnings" attribute works the same way as in rules. When applying a restriction based on the document's "special" property, it defines if warnings will be displayed. If set to false, no warnings will be displayed (only a message when the maximum number of children has been reached).
+The "showWarnings" attribute works the same way as in rules and it is global for all property-based restrictions. When applying a restriction based on the document's "special" property, it defines whether warnings will be displayed. If set to false, no warnings will be displayed (only a message when the maximum number of children has been reached).
 
 So if your propertyAlias is, for example, "umbracoRestrictNodes" (this is the default, by the way) and you go on and add this property to a document and give it a value of 5, then that specific document will only allow for 5 published child nodes (of any type).
 
