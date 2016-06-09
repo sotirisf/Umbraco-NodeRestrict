@@ -3,7 +3,7 @@ Restricts the number of allowed published child nodes either via rules defined i
 
 These two methods of defining restrictions can co-exist.
 
-If the max number of allowed nodes is reached, new nodes will be saved but not published and a message (standard or custom) will inform the user of the restriction. The back-end can also optionally display warning messages before the max number of children is reached to inform the user of the restriction and the allowed number remaining.
+If the max number of allowed nodes is reached, new nodes will be saved but not published and a message (standard or custom) will inform the user of the restriction. The back-end can also optionally display warning messages before the max number of children is reached to inform the user of the restriction and the allowed number of child nodes remaining.
 
 ## Usage (using configuration file in /config folder)
 If you install the package, you will find NodeRestrict.config in your /config folder with a commented example of a rule.
