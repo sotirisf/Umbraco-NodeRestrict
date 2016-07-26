@@ -149,11 +149,24 @@ namespace DotSee.NodeRestrict
             //If rule doctypes do not match, skip this rule
             if (!isMatchChild || !isMatchParent) { return null; }
 
-            //Check if parent node already contains published child nodes of the same type as the one we are saving
-            if (node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name).Any())
+            if (rule.ChildDocType.Equals("*"))
             {
-                //Get a count of the nodes
-                nodeCount = node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name && x.Published).Count();
+                //Check if parent node already contains published child nodes 
+                if (node.Parent().Children().Where(x => x.Published).Any())
+                {
+                    //Get a count of the nodes (all nodes)
+                    nodeCount = node.Parent().Children().Where(x => x.Published).Count();
+                }
+            }
+            else
+            {
+                //Check if parent node already contains published child nodes of the same type as the one we are saving
+                if (node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name).Any())
+                {
+                    //Get a count of the nodes
+                    nodeCount = node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name && x.Published).Count();
+                }
+
             }
 
             return Result.GetResult(nodeCount, rule);
