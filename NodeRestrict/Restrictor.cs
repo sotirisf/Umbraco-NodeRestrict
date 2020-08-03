@@ -2,22 +2,28 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml;
-using umbraco;
 using Umbraco.Core;
 using Umbraco.Core.Models;
 using Umbraco.Core.Services;
 using System.Web.Hosting;
 using System.IO;
+using Umbraco.Web;
+using Umbraco.Core.Composing;
+using Umbraco.Web.Models;
+using Umbraco.Core.Configuration;
 
 namespace DotSee.NodeRestrict
 {
     /// <summary>
     /// Creates new nodes under a newly created node, according to a set of rules
     /// </summary>
-    public sealed class Restrictor 
+    public class Restrictor 
     {
+        private IContentService _cs;
 
         #region Private Members
+
+
         /// <summary>
         /// Lazy singleton instance member
         /// </summary>
@@ -43,6 +49,8 @@ namespace DotSee.NodeRestrict
         /// </summary>
         private Restrictor()
         {
+            _cs = Current.Services.ContentService;
+
             _rules = new List<Rule>();
 
             ///Get rules from the config file. Any rules programmatically declared later on will be added too.
@@ -83,7 +91,7 @@ namespace DotSee.NodeRestrict
         public Result Run(IContent node)
         {
             //Get the parent node.
-            var parent = node.Parent();
+            var parent = _cs.GetById(node.ParentId);
 
             //If we are publishing a top-level node, skip the whole process.
             if (parent == null) { return null; }
@@ -101,11 +109,11 @@ namespace DotSee.NodeRestrict
                 if (
                     parent.HasProperty(PropertyAlias) 
                     && parent.Properties[PropertyAlias]!=null 
-                    && (int)parent.Properties[PropertyAlias].Value > 0
+                    && parent.GetValue<int>(PropertyAlias)> 0
                     )
                 {
                     //Create a rule on the fly and apply it for all children of the parent node.
-                    Rule customRule = new Rule(parent.ContentType.Alias, "*", (int)parent.Properties[PropertyAlias].Value, true, ShowWarningsForProperty);
+                    Rule customRule = new Rule(parent.ContentType.Alias, "*", parent.GetValue<int>(PropertyAlias), true, ShowWarningsForProperty);
                     return CheckRule(customRule, node);
                 }
             }
@@ -138,13 +146,19 @@ namespace DotSee.NodeRestrict
         private Result CheckRule(Rule rule, IContent node) {
 
             int nodeCount = 0;
+            IContent parent = _cs.GetById(node.ParentId);
+            
+            
 
             //If maxnodes not at least equal 1 then skip this rule.
             if (rule.MaxNodes <= 0) { return null; }
 
+            long totalChildren = 0;
+            var children = _cs.GetPagedChildren(node.ParentId, 0, int.MaxValue, out totalChildren);
+            
             //See if doctypes for parent and child node match our current scenario
-            bool isMatchParent = node.Parent().ContentType.Alias.Equals(rule.ParentDocType) || rule.ParentDocType.Equals("*");
-            bool isMatchChild = rule.ChildDocType.Equals(node.ContentType.Alias) || rule.ChildDocType.Equals("*");
+            bool isMatchParent = parent.ContentType.Alias.ToLower().Equals(rule.ParentDocType.ToLower()) || rule.ParentDocType.Equals("*");
+            bool isMatchChild = rule.ChildDocType.ToLower().Equals(node.ContentType.Alias.ToLower()) || rule.ChildDocType.Equals("*");
 
             //If rule doctypes do not match, skip this rule
             if (!isMatchChild || !isMatchParent) { return null; }
@@ -152,19 +166,19 @@ namespace DotSee.NodeRestrict
             if (rule.ChildDocType.Equals("*"))
             {
                 //Check if parent node already contains published child nodes 
-                if (node.Parent().Children().Where(x => x.Published).Any())
+                if (children.Where(x => x.Published).Any())
                 {
                     //Get a count of the nodes (all nodes)
-                    nodeCount = node.Parent().Children().Where(x => x.Published).Count();
+                    nodeCount = children.Where(x => x.Published).Count();
                 }
             }
             else
             {
                 //Check if parent node already contains published child nodes of the same type as the one we are saving
-                if (node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name).Any())
+                if (children.Where(x => x.ContentType.Name.ToLower() == node.ContentType.Name.ToLower()).Any())
                 {
                     //Get a count of the nodes
-                    nodeCount = node.Parent().Children().Where(x => x.ContentType.Name == node.ContentType.Name && x.Published).Count();
+                    nodeCount = children.Where(x => x.ContentType.Name.ToLower() == node.ContentType.Name.ToLower() && x.Published).Count();
                 }
 
             }
@@ -181,12 +195,13 @@ namespace DotSee.NodeRestrict
 
             try
             {
-                xmlConfig.Load(HostingEnvironment.MapPath(GlobalSettings.Path + "/../config/nodeRestrict.config"));
+                IGlobalSettings gs = new GlobalSettings();
+                xmlConfig.Load(HostingEnvironment.MapPath(gs.Path + "/../config/nodeRestrict.config"));
             }
             catch (FileNotFoundException ex) { return; }
             catch (Exception ex)
             {
-                Umbraco.Core.Logging.LogHelper.Error(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType, "There was a problem loading Restrictor configuration from the config file", ex);
+                Current.Logger.Error(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType, "There was a problem loading Restrictor configuration from the config file", ex);
                 return;
             }
 

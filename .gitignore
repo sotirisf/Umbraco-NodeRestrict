@@ -236,3 +236,6 @@ _Pvt_Extensions
 .fake/
 /wwwRoot
 /NodeRestrict.sln
+/NodeRestrict.Tests
+/UmbracoV8
+/wwwroot77
