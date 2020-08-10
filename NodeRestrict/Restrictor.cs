@@ -11,6 +11,9 @@ using Umbraco.Web;
 using Umbraco.Core.Composing;
 using Umbraco.Web.Models;
 using Umbraco.Core.Configuration;
+using Examine.Search;
+using Umbraco.Core.Persistence;
+using Umbraco.Core.Persistence.Querying;
 
 namespace DotSee.NodeRestrict
 {
@@ -20,6 +23,7 @@ namespace DotSee.NodeRestrict
     public class Restrictor 
     {
         private IContentService _cs;
+        private ISqlContext _sql;
 
         #region Private Members
 
@@ -50,6 +54,7 @@ namespace DotSee.NodeRestrict
         private Restrictor()
         {
             _cs = Current.Services.ContentService;
+            _sql = Current.SqlContext;
 
             _rules = new List<Rule>();
 
@@ -143,7 +148,7 @@ namespace DotSee.NodeRestrict
         /// <param name="rule">The rule</param>
         /// <param name="node">The node to check against the rule</param>
         /// <returns>Null if the rule does not apply to the node, or a Result object if it does.</returns>
-        private Result CheckRule(Rule rule, IContent node) {
+        private Result CheckRule(Rule rule, IContent node, string culture = null) {
 
             int nodeCount = 0;
             IContent parent = _cs.GetById(node.ParentId);
@@ -154,36 +159,53 @@ namespace DotSee.NodeRestrict
             if (rule.MaxNodes <= 0) { return null; }
 
             long totalChildren = 0;
-            var children = _cs.GetPagedChildren(node.ParentId, 0, int.MaxValue, out totalChildren);
+
+            var filter = culture == null
+                ? _sql.Query<IContent>()
+                    .Where(x => 
+                            x.Published
+                            && rule.ChildDocType.Equals("*") ? 1 == 1 : x.ContentType.Name.ToLower() == node.ContentType.Name.ToLower())
+                : _sql.Query<IContent>().Where(x => 
+                            x.IsCulturePublished(culture)
+                            && rule.ChildDocType.Equals("*") ? 1 == 1 : x.ContentType.Name.ToLower() == node.ContentType.Name.ToLower())
+                            ;
+
+            //If we're checking for children regardless of doctype, then getting a page size equal to 
+            //the max nodes limit is enough to check. Otherwise, get everything so we can filter
+            //
+            //var maxNodes = rule.ChildDocType.Equals("*") ? rule.MaxNodes : int.MaxValue;
+
+            var children = _cs.GetPagedChildren(node.ParentId, 0, rule.MaxNodes, out totalChildren, filter);
             
-            //See if doctypes for parent and child node match our current scenario
-            bool isMatchParent = parent.ContentType.Alias.ToLower().Equals(rule.ParentDocType.ToLower()) || rule.ParentDocType.Equals("*");
-            bool isMatchChild = rule.ChildDocType.ToLower().Equals(node.ContentType.Alias.ToLower()) || rule.ChildDocType.Equals("*");
+            ////See if doctypes for parent and child node match our current scenario
+            //bool isMatchParent = parent.ContentType.Alias.ToLower().Equals(rule.ParentDocType.ToLower()) || rule.ParentDocType.Equals("*");
+            //bool isMatchChild = rule.ChildDocType.ToLower().Equals(node.ContentType.Alias.ToLower()) || rule.ChildDocType.Equals("*");
 
-            //If rule doctypes do not match, skip this rule
-            if (!isMatchChild || !isMatchParent) { return null; }
+            ////If rule doctypes do not match, skip this rule
+            //if (!isMatchChild || !isMatchParent) { return null; }
 
-            if (rule.ChildDocType.Equals("*"))
-            {
-                //Check if parent node already contains published child nodes 
-                if (children.Where(x => x.Published).Any())
-                {
-                    //Get a count of the nodes (all nodes)
-                    nodeCount = children.Where(x => x.Published).Count();
-                }
-            }
-            else
-            {
-                //Check if parent node already contains published child nodes of the same type as the one we are saving
-                if (children.Where(x => x.ContentType.Name.ToLower() == node.ContentType.Name.ToLower()).Any())
-                {
-                    //Get a count of the nodes
-                    nodeCount = children.Where(x => x.ContentType.Name.ToLower() == node.ContentType.Name.ToLower() && x.Published).Count();
-                }
+            //if (rule.ChildDocType.Equals("*"))
+            //{
+            //    //Check if parent node already contains published child nodes 
+            //    if (totalChildren>0)
+            //    {
+            //        //Get a count of the nodes (all nodes).
+            //        //We get the count of the current result set, it will either reach the max nodes or not.
+            //        nodeCount = children.Count();
+            //    }
+            //}
+            //else
+            //{
+            //    //Check if parent node already contains published child nodes of the same type as the one we are saving
+            //    if (children.Where(x => x.ContentType.Name.ToLower() == node.ContentType.Name.ToLower()).Any())
+            //    {
+            //        //Get a count of the nodes
+            //        nodeCount = children.Where(x => x.ContentType.Name.ToLower() == node.ContentType.Name.ToLower() && x.Published).Count();
+            //    }
 
-            }
+            //}
 
-            return Result.GetResult(nodeCount, rule);
+            return Result.GetResult(children.Count(), rule);
         }
 
         /// <summary>
